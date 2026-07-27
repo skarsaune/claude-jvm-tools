@@ -1,0 +1,13 @@
+{
+  "name": "claude-jvm-tools",
+  "owner": {
+    "name": "Martin Skarsaune"
+  },
+  "plugins": [
+    {
+      "name": "jvm-diagnostics",
+      "source": "./plugins/jvm-diagnostics",
+      "description": "Serviceability-tool-first skills for diagnosing running JVMs: process discovery, process inspection, JFR capture/analysis, and thread/heap leak diagnosis"
+    }
+  ]
+}
