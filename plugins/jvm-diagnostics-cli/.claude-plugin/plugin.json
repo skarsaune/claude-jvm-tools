@@ -1,0 +1,5 @@
+{
+  "name": "jvm-diagnostics-cli",
+  "description": "Skills for diagnosing running JVMs using only local serviceability tools (jps/jcmd/jstat/JFR) before ever opening source code: find and inspect Java processes, capture and analyze JFR recordings, and diagnose thread/heap leaks.",
+  "version": "1.0.0"
+}

@@ -1,35 +1,22 @@
 # claude-jvm-tools
 
-Claude Code skills for diagnosing running JVMs using only serviceability tools
-(`jps`, `jcmd`, `jstat`, JFR) — before ever opening source code.
+Claude Code skills for diagnosing running JVMs — before ever opening source
+code.
 
 ## Install
 
 ```
-/plugin marketplace add <your-github-user-or-org>/claude-jvm-tools
-/plugin install jvm-diagnostics@claude-jvm-tools
+/plugin marketplace add skarsaune/claude-jvm-tools
 ```
 
-## What's included
+Then install whichever plugin matches how you can reach the target JVM:
 
-The `jvm-diagnostics` plugin bundles:
+| Plugin | Use when | |
+|---|---|---|
+| [jvm-diagnostics-cli](plugins/jvm-diagnostics-cli/README.md) | You have local process access or SSH (`jps`/`jcmd`/`jstat`/JFR) | `/plugin install jvm-diagnostics-cli@claude-jvm-tools` |
+| [jvm-diagnostics-jolokia](plugins/jvm-diagnostics-jolokia/README.md) | Only a Jolokia HTTP/JMX endpoint is reachable (e.g. a container with no shell) | `/plugin install jvm-diagnostics-jolokia@claude-jvm-tools` |
 
-- **find-java-processes** — list running JVMs (PID, main class, JVM args).
-- **inspect-java-process** — uptime, flags, CPU/memory, thread count, heap/GC
-  summary, thread dumps for a given PID.
-- **capture-jfr-recording** — start/stop/dump a JDK Flight Recorder recording
-  via `jcmd`, no agent or restart required.
-- **analyze-jfr-recording** — command-line triage of a `.jfr` file: CPU hot
-  paths, allocation pressure, lock/IO contention, and separating real signal
-  from environment noise.
-- **diagnose-thread-leak** — narrow down a suspected thread leak via
-  `jcmd`/`jstat` trends and thread-dump clustering.
-- **diagnose-heap-leak** — narrow down a suspected heap/object leak via
-  class-histogram diffs, forced-GC confirmation, and retaining-root checks.
-
-Each skill is observation-first: it favors live JVM tooling over reading
-source, and only points at specific classes/methods once the tooling has
-narrowed things down.
+See each plugin's README for its full skill list.
 
 ## License
 

@@ -1,0 +1,5 @@
+{
+  "name": "jvm-diagnostics-jolokia",
+  "description": "Skills for diagnosing a remote JVM over JMX-via-HTTP using a Jolokia MCP server, when there is no local jcmd/SSH access to the process: run DiagnosticCommand operations, inspect JVM health, diagnose thread/heap leaks, and capture or live-stream a JFR recording entirely through the Jolokia agent.",
+  "version": "1.0.0"
+}

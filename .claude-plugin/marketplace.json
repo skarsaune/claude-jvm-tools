@@ -5,9 +5,14 @@
   },
   "plugins": [
     {
-      "name": "jvm-diagnostics",
-      "source": "./plugins/jvm-diagnostics",
-      "description": "Serviceability-tool-first skills for diagnosing running JVMs: process discovery, process inspection, JFR capture/analysis, and thread/heap leak diagnosis"
+      "name": "jvm-diagnostics-cli",
+      "source": "./plugins/jvm-diagnostics-cli",
+      "description": "Serviceability-tool-first skills for diagnosing running JVMs via local jcmd/jps/JFR: process discovery, process inspection, JFR capture/analysis, and thread/heap leak diagnosis"
+    },
+    {
+      "name": "jvm-diagnostics-jolokia",
+      "source": "./plugins/jvm-diagnostics-jolokia",
+      "description": "Jolokia-MCP-first skills for diagnosing a remote JVM over JMX-via-HTTP when there's no local jcmd/SSH access: DiagnosticCommand operations, JVM inspection, thread/heap leak diagnosis, and JFR capture/streaming"
     }
   ]
 }

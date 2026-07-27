@@ -51,15 +51,19 @@ jcmd <pid> GC.class_histogram | grep -i <SuspectClass>
 
 If a heap-object count and the thread count grow in lockstep (compare ratios across two or more samples, e.g. 3,111 objects vs 3,157 threads, then 3,118 vs 3,186 later), that's strong evidence both are symptoms of the *same* per-request code path, not two unrelated bugs. Look for other objects that moved together in the same histogram diff too (e.g. a `Foo$$Lambda` class tracking 1:1 with the suspect class) — that pairing usually marks the exact call site.
 
-## 4. Find the retaining root, without a heap dump
+## 4. Narrow down what's keeping the objects reachable, without a heap dump
 
-You often don't need a full heap-dump analyzer to find *what kind* of root is holding the leaked objects. Check whether the owning class is a singleton:
+A leaked object doesn't retain itself — something with a long lifetime is holding a reference to it (directly, or transitively through a chain of other objects). Without a full heap-dump analyzer you can't see the exact reference chain, but you can narrow the *category* of root:
 
-```bash
-jcmd <pid> GC.class_histogram | grep -i <OwningClass>
-```
+- **Check candidate owning classes' instance counts:**
+  ```bash
+  jcmd <pid> GC.class_histogram | grep -i <CandidateOwningClass>
+  ```
+  A count of exactly **1** for a class that's a framework-managed singleton (a Spring `@Controller`/`@Service`/`@Component` bean, a cache instance, a static holder) means that single instance is a de-facto permanent GC root for the life of the process — anything it references transitively is retained regardless of request volume. This is the most common shape, but not the only one:
+- **A growing count of the leaked class itself with no single obvious owner** can instead point at: a `ThreadLocal` that's set but never removed (each thread pins its own copy — cross-check against the thread count/dump from `diagnose-thread-leak`); a listener/callback list that things register into but never deregister from; an entry accumulating in a cache that *does* have an eviction policy, but one that's broken or never triggered (e.g. wrong equals/hashCode preventing eviction lookups from matching); or a classloader leak (check `jcmd <pid> VM.classloader_stats` if the suspect class's own class, not just instances, keeps reappearing after redeploys).
+- **Static fields are a root without needing any instance at all** — a `static` collection field on any class is itself always reachable, independent of whether the declaring class is a "singleton" in the framework sense.
 
-If the count is exactly **1**, and that class is a framework-managed singleton (a Spring `@Controller`/`@Service`/`@Component` bean, a JCache/Caffeine cache instance, a static holder, etc.), that single instance is itself a de-facto permanent GC root for the life of the process. Anything it holds via an instance field (commonly an unbounded `List`/`Map`/`Set` used as an ad-hoc cache) is retained forever, regardless of how many requests come and go. This is enough to state the *shape* of the bug (an unbounded collection field on a long-lived singleton) without needing to see the field itself yet.
+State whichever shape the evidence actually supports (singleton-held collection, ThreadLocal, broken eviction, static field, listener accumulation) rather than defaulting to "unbounded cache on a singleton" — that's one possible shape among several with the same class-count symptom.
 
 ## 5. Optional deeper root-cause tracing (often blocked)
 
@@ -67,10 +71,10 @@ If the count is exactly **1**, and that class is a framework-managed singleton (
 
 ## 6. Only now, open the source
 
-With a specific singleton class identified as the likely retaining root (from step 4) and, ideally, an endpoint/method identified as the per-request trigger (from a paired `diagnose-thread-leak` finding, or from natural traffic observed in step 3), read just that class for an instance-level collection field that's appended to but never trimmed/evicted.
+With a likely retaining root/mechanism identified (from step 4) and, ideally, an endpoint/method identified as the per-request trigger (from a paired `diagnose-thread-leak` finding, or from natural traffic observed in step 3), read just that class for the specific field or registration call responsible — an unbounded collection field, a `ThreadLocal` without a matching `remove()`, a listener list without deregistration, or an eviction policy that never fires.
 
 ## Why this order matters
 
-Finding a suspect via a filtered/unfiltered histogram diff (step 1) beats guessing a class name up front. Confirming non-collectability (step 2) before hunting for a cause avoids chasing heap noise. Cross-referencing against other resources (step 3) catches cases where a single bug manifests as multiple "separate-looking" leaks — missing this leads to fixing one symptom and declaring victory while the other keeps growing. The singleton check (step 4) narrows the root cause to a specific shape before source is even opened, so the eventual code read is a confirmation step, not a fishing expedition.
+Finding a suspect via a filtered/unfiltered histogram diff (step 1) beats guessing a class name up front. Confirming non-collectability (step 2) before hunting for a cause avoids chasing heap noise. Cross-referencing against other resources (step 3) catches cases where a single bug manifests as multiple "separate-looking" leaks — missing this leads to fixing one symptom and declaring victory while the other keeps growing. Step 4 narrows the root cause to one of a few specific shapes before source is even opened, so the eventual code read is a confirmation step, not a fishing expedition — but which shape it is should come from the evidence (instance counts, thread-local/classloader checks), not be assumed up front.
 
 Deliberately not included: firing a bulk burst of synthetic requests at the process to force an unambiguous before/after delta. That technique proves causality cleanly, but generating load against a system is a decision with its own blast radius (it's not always a private demo instance) and shouldn't be a default step in a diagnostic skill — treat it as a separate, deliberate call the user makes on its own, not something baked into routine leak-hunting.

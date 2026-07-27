@@ -1,5 +1,0 @@
-{
-  "name": "jvm-diagnostics",
-  "description": "Skills for diagnosing running JVMs using only serviceability tools (jps/jcmd/jstat/JFR) before ever opening source code: find and inspect Java processes, capture and analyze JFR recordings, and diagnose thread/heap leaks.",
-  "version": "1.0.0"
-}
