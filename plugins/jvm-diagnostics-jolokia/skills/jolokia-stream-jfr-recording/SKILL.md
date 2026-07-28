@@ -51,7 +51,7 @@ The second argument is a `TabularData` of stream options (block size, start/end 
 executeMBeanOperation: jdk.management.jfr:type=FlightRecorder / readStream, args: [<streamId>]
 ```
 
-Each call returns one chunk (observed ~170KB per call against a live agent, but treat the size as implementation-defined, not a contract) as a **JSON array of Java `byte` values — i.e. SIGNED integers in the range -128..127**, e.g. `[70, 76, 82, 0, 0, 2, 0, 1, ...]`. This is the single most important gotcha in this skill:
+Each call returns one chunk (observed ~50KB per call across multiple live agents — e.g. 46 chunks / 2.3MB, and separately 31 chunks / 1.5MB — so treat ~50KB as the realistic default, not the ~170KB once assumed here, and either way implementation-defined, not a contract) as a **JSON array of Java `byte` values — i.e. SIGNED integers in the range -128..127**, e.g. `[70, 76, 82, 0, 0, 2, 0, 1, ...]`. This is the single most important gotcha in this skill:
 
 **You must convert each signed byte to its unsigned 8-bit value before writing it out, or the resulting file is corrupt.** In pseudocode: `unsignedByte = signedByte < 0 ? signedByte + 256 : signedByte` (equivalently `signedByte & 0xFF`). A valid `.jfr` file starts with the literal bytes `FLR\0` — `70, 76, 82, 0` in decimal — which is exactly what a correctly-decoded first chunk looks like; if your reassembled file doesn't start with those four bytes, the byte conversion is wrong.
 
@@ -67,15 +67,22 @@ Whatever language/tool is doing the byte-array decoding, write the concatenated 
 
 ## 5. Clean up
 
-Always close what you opened, in this order, or resources leak on the target JVM for the life of the process:
+Always close what you opened, or resources leak on the target JVM for the life of the process. The exact order depends on which path you took in step 2:
 
+**If you stopped the recording outright (no snapshot):**
 ```
 executeMBeanOperation: jdk.management.jfr:type=FlightRecorder / closeStream, args: [<streamId>]
-executeMBeanOperation: jdk.management.jfr:type=FlightRecorder / closeRecording, args: [<recordingId>]   # the snapshot id, if you took one
-executeMBeanOperation: jdk.management.jfr:type=FlightRecorder / stopRecording, args: [<originalId>]     # if the original is still running and you're done with it
+executeMBeanOperation: jdk.management.jfr:type=FlightRecorder / closeRecording, args: [<recordingId>]
+```
+Confirmed working end-to-end: `stopRecording(id)` → `openStream(id, {})` → read loop → `closeStream(streamId)` → `closeRecording(id)`. Verify with the `Recordings` attribute afterward — it should read back `[]`.
+
+**If you took a snapshot (original recording kept running):**
+```
+executeMBeanOperation: jdk.management.jfr:type=FlightRecorder / closeStream, args: [<streamId>]
+executeMBeanOperation: jdk.management.jfr:type=FlightRecorder / closeRecording, args: [<snapshotId>]
+executeMBeanOperation: jdk.management.jfr:type=FlightRecorder / stopRecording, args: [<originalId>]     # if you're done with the original too
 executeMBeanOperation: jdk.management.jfr:type=FlightRecorder / closeRecording, args: [<originalId>]
 ```
-
 Confirmed all four calls succeed cleanly in this order after a snapshot-based read (streamId, snapshot recordingId, original recordingId stop, original recordingId close).
 
 ## Why this over the file-based approach

@@ -7,7 +7,7 @@ description: Start, check, and dump a JDK Flight Recorder (JFR) recording on a r
 
 Requires a connected Jolokia MCP server pointed at the target JVM, with the `com.sun.management:type=DiagnosticCommand` MBean whitelisted. See `jolokia-run-diagnostic-command` for the calling convention used below.
 
-**Read this first:** `JFR.start`'s `filename=` option, and `JFR.dump`'s output, are written to a file **on the target JVM's own filesystem** — not on the machine running the Jolokia MCP client, and not returned as data over JMX. Confirmed by testing: starting a recording with `filename=/tmp/foo.jfr` produces no such file on the client host, even after the recording duration elapses.
+**Read this first:** `JFR.start`'s `filename=` option, and `JFR.dump`'s output, are written to a file **on the target JVM's own filesystem** — not on the machine running the Jolokia MCP client, and not returned as data over JMX. Confirmed by testing: starting a recording with `filename=/tmp/foo.jfr` produces no such file on the client host, even after the recording duration elapses. Separately, an absolute `/tmp/...` path can also fail to write *on the target itself* in hardened/containerized images (read-only root filesystem, or a `/tmp` with narrowed permissions) — see the note on `filename=` in step 2 for why a bare relative filename (resolving to the JVM's CWD) is the safer default.
 
 **Default to `jolokia-stream-jfr-recording` instead** — it needs nothing beyond the Jolokia connection itself. Only reach for this file-based skill in the narrow case where you have an independent, *actually working* way to pull that file off the target host afterwards:
 
@@ -35,12 +35,12 @@ Note this operation still requires the 1-arg array shape — `args: null` (or `a
 
 ```
 executeMBeanOperation: com.sun.management:type=DiagnosticCommand / jfrStart,
-  args: ["name=<label>", "settings=profile", "duration=<N>s", "filename=/tmp/<app>-<label>.jfr"]
+  args: ["name=<label>", "settings=profile", "duration=<N>s", "filename=<app>-<label>.jfr"]
 ```
 
 - `settings=profile` — the higher-detail built-in profile (vs. `default`, lighter-weight, meant for always-on monitoring). Use `profile` for a deliberate, short diagnostic session.
 - `duration=<N>s` — e.g. `120s`. The JVM auto-stops and auto-dumps to `filename` when it elapses.
-- `filename=` — remember: this path is resolved **on the target's filesystem**. Use a path you'll actually be able to retrieve afterwards.
+- `filename=` — remember: this path is resolved **on the target's filesystem**. Use a **relative filename with no `/tmp` prefix** (resolves to the JVM's CWD) as the default, not an absolute `/tmp/...` path. Hardened/containerized images commonly run with a read-only root filesystem or a `/tmp` whose permissions were deliberately narrowed during hardening, while the CWD (e.g. `WORKDIR` in the Dockerfile) is far more likely to be writable — an absolute `/tmp/...` path is a common way for this whole command to silently produce no file. Only use an absolute path (`/tmp/...` or otherwise) if you've independently confirmed that directory is writable on this specific target.
 - Pick a `name` you'll recognize if you need to reference the recording again (`jfrCheck`, or `JFR.stop name=<label>`).
 
 ## 3. Wait for it to finish, then confirm it landed — on the target
@@ -49,14 +49,14 @@ executeMBeanOperation: com.sun.management:type=DiagnosticCommand / jfrStart,
 executeMBeanOperation: com.sun.management:type=DiagnosticCommand / jfrCheck, args: ["name=<label>"]
 ```
 
-Once the recording no longer shows as running, retrieve the file using whichever access path actually applies to you:
+Once the recording no longer shows as running, retrieve the file using whichever access path actually applies to you (paths below assume the CWD-relative `filename=` from step 2 — adjust if you used an absolute path):
 
 ```bash
 # local target — the realistic case for this skill
-ls -la /tmp/<app>-<label>.jfr
+ls -la <app>-<label>.jfr    # relative to the target JVM's working directory
 
 # real SSH/file access to the host
-scp <host>:/tmp/<app>-<label>.jfr ./
+scp <host>:<app>-<label>.jfr ./
 ```
 
 `docker cp`/`kubectl cp` are sometimes suggested here, but don't count on them for the containerized targets this plugin is meant for: `docker cp` needs a local Docker daemon, and `kubectl cp` needs `tar` inside the container, which hardened images typically lack. If that's your situation, you shouldn't have used this skill — go back and use `jolokia-stream-jfr-recording`.
