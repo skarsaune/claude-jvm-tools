@@ -23,6 +23,10 @@ target JVM's Jolokia HTTP agent.
 
 ## Skills
 
+- **jolokia-configure-mcp-server** — connect (or switch/disconnect) a Jolokia
+  MCP server for the current project via `claude mcp add --scope local`,
+  keyed to a specific target URL. Start here if no Jolokia MCP server is
+  connected yet.
 - **jolokia-run-diagnostic-command** — the calling convention for
   `com.sun.management:type=DiagnosticCommand` operations over Jolokia
   (the `jcmd`-equivalent MBean). Referenced by the other skills below rather
@@ -34,14 +38,18 @@ target JVM's Jolokia HTTP agent.
 - **jolokia-diagnose-heap-leak** — narrow down a suspected heap/object leak
   via class-histogram diffs, forced-GC confirmation, and retaining-root
   checks.
-- **jolokia-capture-jfr-recording** — start/check/dump a JFR recording via
-  `DiagnosticCommand`'s `JFR.*` operations. File-based: the resulting `.jfr`
-  file lands on the *target's* filesystem, so this needs some other way to
-  retrieve it (local access, `docker cp`/`kubectl cp`, SSH).
 - **jolokia-stream-jfr-recording** — capture a JFR recording using only the
   `jdk.management.jfr:type=FlightRecorder` MBean's stream operations, with
-  zero filesystem dependency on the target host. Use this when Jolokia is
-  your only access to the target at all.
+  zero filesystem dependency on the target host. **Default choice** — if
+  Jolokia is your access path at all, this works regardless of what else you
+  do or don't have.
+- **jolokia-capture-jfr-recording** — start/check/dump a JFR recording via
+  `DiagnosticCommand`'s `JFR.*` operations. File-based: the resulting `.jfr`
+  file lands on the *target's* filesystem. Only worth it when the target
+  really is local to you (the file lands in your own `/tmp`) or you have SSH
+  onto the host — `docker cp` assumes a local Docker daemon you often won't
+  have, and `kubectl cp` needs `tar` inside the container, which hardened/
+  distroless images typically don't ship.
 
 Each skill is observation-first: it favors live JVM tooling over reading
 source, and only points at specific classes/methods once the tooling has

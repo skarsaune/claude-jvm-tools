@@ -1,19 +1,25 @@
 ---
 name: jolokia-capture-jfr-recording
-description: Start, check, and dump a JDK Flight Recorder (JFR) recording on a remote JVM through a Jolokia MCP server's DiagnosticCommand MBean (JFR.start/JFR.check/JFR.dump equivalents) — file-based, requires separate access to fetch the resulting .jfr file off the target's filesystem. Use when you have Jolokia access to a remote JVM AND some other way to retrieve a file from that host (it's actually local, or you have docker cp/kubectl cp/SSH). If you have Jolokia access ONLY (no filesystem access to the target at all), use jolokia-stream-jfr-recording instead.
+description: Start, check, and dump a JDK Flight Recorder (JFR) recording on a remote JVM through a Jolokia MCP server's DiagnosticCommand MBean (JFR.start/JFR.check/JFR.dump equivalents) — file-based, requires separate access to fetch the resulting .jfr file off the target's filesystem. Only use this when the target is genuinely local to you or you have SSH onto the host — NOT for containers/pods you can only reach via Jolokia, where docker cp (needs a local Docker daemon) and kubectl cp (needs tar inside the container, absent from most hardened images) usually won't work. Default to jolokia-stream-jfr-recording instead, which needs nothing beyond the Jolokia connection you already have.
 ---
 
 # Capture a JFR recording via Jolokia (file-based)
 
 Requires a connected Jolokia MCP server pointed at the target JVM, with the `com.sun.management:type=DiagnosticCommand` MBean whitelisted. See `jolokia-run-diagnostic-command` for the calling convention used below.
 
-**Read this first:** `JFR.start`'s `filename=` option, and `JFR.dump`'s output, are written to a file **on the target JVM's own filesystem** — not on the machine running the Jolokia MCP client, and not returned as data over JMX. Confirmed by testing: starting a recording with `filename=/tmp/foo.jfr` produces no such file on the client host, even after the recording duration elapses. Only use this file-based skill when you have an independent way to retrieve that file afterwards:
+**Read this first:** `JFR.start`'s `filename=` option, and `JFR.dump`'s output, are written to a file **on the target JVM's own filesystem** — not on the machine running the Jolokia MCP client, and not returned as data over JMX. Confirmed by testing: starting a recording with `filename=/tmp/foo.jfr` produces no such file on the client host, even after the recording duration elapses.
 
-- The target JVM is actually running on your local machine (the file lands in your own `/tmp`).
-- The target is in a container/pod and you have `docker cp`/`kubectl cp` access to it.
-- You have SSH/other file access to the target host.
+**Default to `jolokia-stream-jfr-recording` instead** — it needs nothing beyond the Jolokia connection itself. Only reach for this file-based skill in the narrow case where you have an independent, *actually working* way to pull that file off the target host afterwards:
 
-**If none of those apply — Jolokia is your only access to the target — use `jolokia-stream-jfr-recording` instead**, which reads the recording data back over the JMX stream itself and needs no separate filesystem access.
+- The target JVM is genuinely running on your local machine (the file lands in your own `/tmp`) — this is the realistic case for this skill.
+- You have SSH/other real file access to the target host.
+
+Two options that sound like they'd work but usually don't for the containerized/Jolokia-only targets this plugin is meant for:
+
+- `docker cp` requires a local Docker daemon/socket you can talk to — if you're reaching the target only via a Jolokia HTTP endpoint (a remote pod, a locked-down container), you almost certainly don't have that.
+- `kubectl cp` shells out to `tar` *inside the target container* to build the archive — hardened/distroless images (the kind this plugin targets, e.g. this repo's own BellSoft Liberica base image) typically don't ship a shell or `tar`, so it fails even with valid `kubectl` access and RBAC.
+
+If neither local access nor real SSH applies, **use `jolokia-stream-jfr-recording`**, which reads the recording data back over the JMX stream itself and needs no separate filesystem access.
 
 ## 1. Check for an existing recording first
 
@@ -43,16 +49,17 @@ executeMBeanOperation: com.sun.management:type=DiagnosticCommand / jfrStart,
 executeMBeanOperation: com.sun.management:type=DiagnosticCommand / jfrCheck, args: ["name=<label>"]
 ```
 
-Once the recording no longer shows as running, retrieve the file using whichever access path applies:
+Once the recording no longer shows as running, retrieve the file using whichever access path actually applies to you:
 
 ```bash
-# local target
+# local target — the realistic case for this skill
 ls -la /tmp/<app>-<label>.jfr
 
-# containerized target
-docker cp <container>:/tmp/<app>-<label>.jfr ./
-kubectl cp <namespace>/<pod>:/tmp/<app>-<label>.jfr ./
+# real SSH/file access to the host
+scp <host>:/tmp/<app>-<label>.jfr ./
 ```
+
+`docker cp`/`kubectl cp` are sometimes suggested here, but don't count on them for the containerized targets this plugin is meant for: `docker cp` needs a local Docker daemon, and `kubectl cp` needs `tar` inside the container, which hardened images typically lack. If that's your situation, you shouldn't have used this skill — go back and use `jolokia-stream-jfr-recording`.
 
 ## 4. Analyze the recording
 
