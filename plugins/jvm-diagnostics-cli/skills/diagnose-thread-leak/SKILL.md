@@ -1,11 +1,11 @@
 ---
 name: diagnose-thread-leak
-description: Diagnose a suspected thread leak in a running Java process using only serviceability tools (jcmd/jstat), before ever opening source code. Use when a process's live thread count looks abnormally high or keeps climbing over time, or the user reports a JVM process "deteriorating" under sustained load.
+description: Diagnose a suspected thread leak in a running Java process using serviceability tools (jcmd/jstat). Use when a process's live thread count looks abnormally high or keeps climbing over time, or the user reports a JVM process "deteriorating" under sustained load.
 ---
 
 # Diagnose a thread leak
 
-Requires a PID (use the `find-java-processes` skill / `jps -lv` first if you don't have one). Stay in the observation domain — jcmd, jstat, and controlled requests — for as long as possible. Only open source once the tooling has pointed at a specific class/method/lock; reading code earlier than that skips past the diagnostic value of the tools themselves.
+Requires a PID (use the `find-java-processes` skill / `jps -lv` first if you don't have one).
 
 ## 1. Confirm the trend, don't rely on one snapshot
 
@@ -77,12 +77,12 @@ Instead, take several spaced thread-count samples (`jcmd <pid> Thread.print | gr
 
 Also don't assume the trigger is a deterministic one-request-in-one-thread-out relationship. A leak can be gated behind a condition (a probabilistic check, a cache-miss branch, a time-based trigger) so the growth is real but not 1:1 with request count — in that case an exact +N delta for N requests will *not* materialize even though the leak is genuine, and chasing that exact match can wrongly rule out the correct endpoint. Sustained upward trend across samples is the more robust signal; treat an exact-delta match as a nice-to-have bonus confirmation when it happens to hold, not a requirement.
 
-## 6. Only now, open the source
+## 6. Read the source
 
 With a specific class, method, and line number in hand from the stack trace (e.g. `Controller.lambda$someMethod$0(Controller.java:119)`) and the thread-state/lock evidence from step 3, read just that method to see why threads accumulate instead of terminating or returning to a pool. The stack/state combination narrows the *category* (unreleased lock, unbounded pool/queue, stuck external call, per-call resource never reused) — the exact bug still requires reading that specific code.
 
 ## Why this order matters
 
-This project (see root `CLAUDE.md`) is a JVM observability/diagnostics demo — the point is exercising jcmd/JFR/Jolokia-style tooling, not code review. Following steps 1-5 before step 6 also means the diagnosis is falsifiable at every step (trend confirmed, cluster identified, growth corroborated) rather than a source-reading guess that happens to match a symptom.
+Working through steps 1-5 before step 6 means the diagnosis is falsifiable at every step (trend confirmed, cluster identified, growth corroborated) rather than a source-reading guess that happens to match a symptom.
 
 Deliberately not included: firing a bulk burst of synthetic requests to force an exact +N delta. That technique looks rigorous, but it both (a) generates load against a system as a routine diagnostic step, which is a decision with its own blast radius, and (b) assumes a deterministic one-request-in-one-thread-out relationship that seldom holds — real leaks are often gated behind a condition (probabilistic, cache-miss-dependent, time-based), so the clean delta this technique looks for may simply never appear even when the diagnosis is correct. Sustained, monotonic growth across spaced natural-traffic samples is a more robust and lower-risk signal.

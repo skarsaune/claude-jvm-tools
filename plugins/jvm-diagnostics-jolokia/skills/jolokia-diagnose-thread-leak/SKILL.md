@@ -5,7 +5,7 @@ description: Diagnose a suspected thread leak in a JVM reachable only through a 
 
 # Diagnose a thread leak via Jolokia
 
-Requires a connected Jolokia MCP server pointed at the target JVM. Same observe-first posture as the local-`jcmd` version of this skill (`jvm-diagnostics-cli`'s `diagnose-thread-leak`): stay in the observation domain for as long as possible, only open source once the tooling has pointed at a specific class/method/lock. See `jolokia-run-diagnostic-command` for the DiagnosticCommand calling convention used below.
+Requires a connected Jolokia MCP server pointed at the target JVM. Same diagnostic approach as the local-`jcmd` version of this skill (`jvm-diagnostics-cli`'s `diagnose-thread-leak`), just driven over Jolokia instead. See `jolokia-run-diagnostic-command` for the DiagnosticCommand calling convention used below.
 
 ## 1. Confirm the trend, don't rely on one snapshot
 
@@ -89,7 +89,7 @@ If the oldest leaked thread's elapsed time is close to the process's total uptim
 
 If the leaked stack trace names a request-handling class (e.g. a `Controller`), take several spaced `ThreadCount` samples while whatever traffic is already flowing continues, and check for **sustained, monotonic growth**. Avoid firing a bulk burst of synthetic requests to force a clean before/after delta — generating load against a system is a decision with its own blast radius and shouldn't be a routine diagnostic step, and a leak can be gated behind a non-deterministic condition (probabilistic check, cache-miss branch, time-based trigger) such that an exact +N-requests-to-+N-threads delta never appears even when the leak is real. Sustained upward trend across samples is the more robust signal.
 
-## 6. Only now, open the source
+## 6. Read the source
 
 With a specific class, method, and line number in hand from the stack trace, plus the thread-state/lock evidence from step 3, read just that method to see why threads accumulate instead of terminating or returning to a pool. The stack/state combination narrows the *category* (unreleased lock, unbounded pool/queue, stuck external call, per-call resource never reused) — the exact bug still requires reading that specific code.
 

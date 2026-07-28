@@ -1,6 +1,6 @@
 ---
 name: jolokia-diagnose-heap-leak
-description: Narrow down a suspected heap/application-object leak in a JVM reachable only through a Jolokia MCP server (no local jcmd/SSH access) — confirm it's a real leak (not GC lag), find what other leaking resource it correlates with, and locate the retaining GC root — before opening source code. Use when a class's instance count keeps climbing on a Jolokia-only-reachable process, or after jolokia-diagnose-thread-leak has flagged a suspect and you need to check for a sibling heap leak.
+description: Narrow down a suspected heap/application-object leak in a JVM reachable only through a Jolokia MCP server (no local jcmd/SSH access) — confirm it's a real leak (not GC lag), find what other leaking resource it correlates with, and locate the retaining GC root. Use when a class's instance count keeps climbing on a Jolokia-only-reachable process, or after jolokia-diagnose-thread-leak has flagged a suspect and you need to check for a sibling heap leak.
 ---
 
 # Diagnose a heap / application-object leak via Jolokia
@@ -70,7 +70,7 @@ State whichever shape the evidence actually supports rather than defaulting to "
 
 `jhsdb clhsdb --pid <pid>` (used in the local-`jcmd` version of this skill for live GC-root inspection) requires local process attach — it has no Jolokia equivalent, since Jolokia only exposes what the JVM publishes via MBeans. If you need this level of detail on a Jolokia-only-reachable process, the reasoning in step 4 (singleton-plus-lockstep-counts) is normally sufficient to hand off to a source read; a full heap dump (`HotSpotDiagnostic`'s `dumpHeap` operation, if whitelisted) plus offline analysis is the next escalation if it isn't.
 
-## 6. Only now, open the source
+## 6. Read the source
 
 With a likely retaining root/mechanism identified (step 4) and, ideally, an endpoint/method identified as the per-request trigger (from a paired `jolokia-diagnose-thread-leak` finding), read just that class for the specific field or registration call responsible — an unbounded collection field, a `ThreadLocal` without a matching remove, a listener list without deregistration, or a broken eviction policy.
 

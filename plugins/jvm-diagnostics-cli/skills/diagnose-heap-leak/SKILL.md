@@ -1,11 +1,11 @@
 ---
 name: diagnose-heap-leak
-description: Narrow down a suspected heap/application-object leak in a running Java process using only jcmd/jstat/ps — confirm it's a real leak (not GC lag), find what other leaking resource it correlates with, and locate the retaining GC root — before opening source code. Use when a class's instance count on the heap keeps climbing, or after diagnose-thread-leak has flagged a suspect endpoint/class and you need to check whether it's also leaking heap objects.
+description: Narrow down a suspected heap/application-object leak in a running Java process using jcmd/jstat/ps — confirm it's a real leak (not GC lag), find what other leaking resource it correlates with, and locate the retaining GC root. Use when a class's instance count on the heap keeps climbing, or after diagnose-thread-leak has flagged a suspect endpoint/class and you need to check whether it's also leaking heap objects.
 ---
 
 # Diagnose a heap / application-object leak
 
-Requires a PID. Pairs naturally with `diagnose-thread-leak` — a request-driven thread leak often has a sibling heap leak on the same code path (both symptoms of one unbounded-collection bug), so once you've found one, check for the other. As with that skill: stay in the observation domain, only open source once the tooling has pinpointed a specific retaining field/class.
+Requires a PID. Pairs naturally with `diagnose-thread-leak` — a request-driven thread leak often has a sibling heap leak on the same code path (both symptoms of one unbounded-collection bug), so once you've found one, check for the other.
 
 ## 1. If you don't have a suspect class yet, find one from a two-snapshot diff
 
@@ -69,7 +69,7 @@ State whichever shape the evidence actually supports (singleton-held collection,
 
 `jhsdb clhsdb --pid <pid>` can attach to a live process and inspect live objects/roots directly, without producing a heap dump file. On macOS this is usually blocked by SIP (`task_for_pid failed`) unless SIP is disabled or you run as root — don't ask the user to weaken system security just to get this; treat the failure as expected and fall back to the singleton-plus-lockstep-counts reasoning in step 4, which is normally sufficient to hand off to a source read.
 
-## 6. Only now, open the source
+## 6. Read the source
 
 With a likely retaining root/mechanism identified (from step 4) and, ideally, an endpoint/method identified as the per-request trigger (from a paired `diagnose-thread-leak` finding, or from natural traffic observed in step 3), read just that class for the specific field or registration call responsible — an unbounded collection field, a `ThreadLocal` without a matching `remove()`, a listener list without deregistration, or an eviction policy that never fires.
 
