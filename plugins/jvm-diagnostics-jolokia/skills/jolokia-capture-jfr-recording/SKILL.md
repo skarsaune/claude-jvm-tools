@@ -38,6 +38,8 @@ executeMBeanOperation: com.sun.management:type=DiagnosticCommand / jfrStart,
   args: ["name=<label>", "settings=profile", "duration=<N>s", "filename=<app>-<label>.jfr"]
 ```
 
+`args` must be a **flat** array — one string per option, not `[["name=<label>", "settings=profile"]]`. Nesting here doesn't throw an obvious argument-shape error; it fails as `Could not find file 'profile]'`, which looks like a filesystem problem. See `jolokia-run-diagnostic-command` step 1 if you hit that.
+
 - `settings=profile` — the higher-detail built-in profile (vs. `default`, lighter-weight, meant for always-on monitoring). Use `profile` for a deliberate, short diagnostic session.
 - `duration=<N>s` — e.g. `120s`. The JVM auto-stops and auto-dumps to `filename` when it elapses.
 - `filename=` — remember: this path is resolved **on the target's filesystem**. Use a **relative filename with no `/tmp` prefix** (resolves to the JVM's CWD) as the default, not an absolute `/tmp/...` path. Hardened/containerized images commonly run with a read-only root filesystem or a `/tmp` whose permissions were deliberately narrowed during hardening, while the CWD (e.g. `WORKDIR` in the Dockerfile) is far more likely to be writable — an absolute `/tmp/...` path is a common way for this whole command to silently produce no file. Only use an absolute path (`/tmp/...` or otherwise) if you've independently confirmed that directory is writable on this specific target.

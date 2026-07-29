@@ -23,6 +23,8 @@ Every `DiagnosticCommand` operation's signature is `(String[] arguments)` — th
 
 **Do NOT nest the array** — `[["-l"]]` throws `Unknown argument '[-l]'`. `args` is the array itself, e.g. `["-l"]`, not an array containing an array.
 
+The nesting mistake is easy to make on multi-option calls like `jfrStart` (e.g. `args: [["name=demo","settings=profile"]]`), and there its symptom is *not* the `Unknown argument '[...]'` error above — confirmed live, it instead throws a misleading `Could not find file 'profile]'`, which reads like a filesystem/permissions problem and can send you chasing the wrong cause. If you see `Could not find file '<value>]'` (note the trailing `]`) from any DiagnosticCommand operation, that's this nesting bug, not a real file-path issue — flatten the array, e.g. `args: ["name=demo", "settings=profile"]`.
+
 ## 2. Options use `key` or `key=value`, never bare CLI flags
 
 `jcmd` options that look like Unix flags (`-l`, `-all`) are actually `key`/`key=value` tokens in disguise — pass them exactly as `jcmd` would show them, as individual array elements:
