@@ -22,4 +22,4 @@ ps aux | grep -i java | grep -v grep
 
 `ps` output is less structured (no clean main-class column) but works without a JDK install.
 
-`jps` only sees JVMs owned by the same user unless run with elevated privileges.
+`jps` only sees JVMs owned by the same user.

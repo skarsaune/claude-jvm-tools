@@ -50,7 +50,3 @@ target JVM's Jolokia HTTP agent.
   onto the host — `docker cp` assumes a local Docker daemon you often won't
   have, and `kubectl cp` needs `tar` inside the container, which hardened/
   distroless images typically don't ship.
-
-Each skill is observation-first: it favors live JVM tooling over reading
-source, and only points at specific classes/methods once the tooling has
-narrowed things down.

@@ -17,7 +17,7 @@ Requires a connected Jolokia MCP server pointed at the target JVM, with the `com
 Two options that sound like they'd work but usually don't for the containerized/Jolokia-only targets this plugin is meant for:
 
 - `docker cp` requires a local Docker daemon/socket you can talk to — if you're reaching the target only via a Jolokia HTTP endpoint (a remote pod, a locked-down container), you almost certainly don't have that.
-- `kubectl cp` shells out to `tar` *inside the target container* to build the archive — hardened/distroless images (the kind this plugin targets, e.g. this repo's own BellSoft Liberica base image) typically don't ship a shell or `tar`, so it fails even with valid `kubectl` access and RBAC.
+- `kubectl cp` shells out to `tar` *inside the target container* to build the archive — hardened/distroless images (the kind this plugin targets, e.g. BellSoft Liberica base image) typically don't ship a shell or `tar`, so it fails even with valid `kubectl` access and RBAC.
 
 If neither local access nor real SSH applies, **use `jolokia-stream-jfr-recording`**, which reads the recording data back over the JMX stream itself and needs no separate filesystem access.
 

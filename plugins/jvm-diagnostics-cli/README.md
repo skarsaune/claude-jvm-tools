@@ -29,7 +29,3 @@ container/pod with no shell access), use
   `jcmd`/`jstat` trends and thread-dump clustering.
 - **diagnose-heap-leak** — narrow down a suspected heap/object leak via
   class-histogram diffs, forced-GC confirmation, and retaining-root checks.
-
-Each skill is observation-first: it favors live JVM tooling over reading
-source, and only points at specific classes/methods once the tooling has
-narrowed things down.

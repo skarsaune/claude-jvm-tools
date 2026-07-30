@@ -61,4 +61,4 @@ jfr print --events jdk.ExecutionSample /tmp/<app>-<pid>-<label>.jfr | head -100 
 
 ## Why jcmd over other capture methods
 
-`jcmd JFR.start` works against any already-running JVM the current user can attach to, with no javaagent, no restart, and no extra dependency — the same low-friction, observe-first posture as the other skills in this set. It's also exactly what this repo's `jolokia-access.xml` whitelists the `FlightRecorder` MBean for, so this is the intended diagnostic path here, just driven from the command line instead of over JMX/HTTP.
+`jcmd JFR.start` works against any already-running JVM the current user can attach to, with no javaagent, no restart, and no extra dependency — the same low-friction, observe-first posture as the other skills in this set.

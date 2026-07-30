@@ -51,7 +51,7 @@ The second argument is a `TabularData` of stream options (block size, start/end 
 executeMBeanOperation: jdk.management.jfr:type=FlightRecorder / readStream, args: [<streamId>]
 ```
 
-Each call returns one chunk (observed ~50KB per call across multiple live agents — e.g. 46 chunks / 2.3MB, and separately 31 chunks / 1.5MB — so treat ~50KB as the realistic default, not the ~170KB once assumed here, and either way implementation-defined, not a contract) as a **JSON array of Java `byte` values — i.e. SIGNED integers in the range -128..127**, e.g. `[70, 76, 82, 0, 0, 2, 0, 1, ...]`. This is the single most important gotcha in this skill:
+Each call returns one chunk (observed ~50KB per call across multiple live agents — e.g. 46 chunks / 2.3MB, and separately 31 chunks / 1.5MB — so treat ~50KB as the realistic default, and either way implementation-defined, not a contract) as a **JSON array of Java `byte` values — i.e. SIGNED integers in the range -128..127**, e.g. `[70, 76, 82, 0, 0, 2, 0, 1, ...]`. This is the single most important gotcha in this skill:
 
 **You must convert each signed byte to its unsigned 8-bit value before writing it out, or the resulting file is corrupt.** In pseudocode: `unsignedByte = signedByte < 0 ? signedByte + 256 : signedByte` (equivalently `signedByte & 0xFF`). A valid `.jfr` file starts with the literal bytes `FLR\0` — `70, 76, 82, 0` in decimal — which is exactly what a correctly-decoded first chunk looks like; if your reassembled file doesn't start with those four bytes, the byte conversion is wrong.
 

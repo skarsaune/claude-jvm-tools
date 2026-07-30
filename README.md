@@ -1,7 +1,6 @@
 # claude-jvm-tools
 
-Claude Code skills for diagnosing running JVMs — before ever opening source
-code.
+Claude Code skills for diagnosing running JVMs.
 
 ## Install
 
