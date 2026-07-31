@@ -38,7 +38,17 @@ jcmd <pid> GC.run                                         # force a full GC
 jcmd <pid> GC.class_histogram | grep -i <SuspectClass>   # recheck
 ```
 
-If the count is unchanged after a forced full GC, the instances are strongly reachable from a live GC root — confirmed leak, not GC lag. If the count drops, it was reclaimable garbage and not a leak (at least not at this rate).
+If the count drops after a forced full GC, it was reclaimable garbage and not a leak (at least not at this rate).
+
+**Survival of a single forced GC is necessary but NOT sufficient to confirm a leak.** A high count that is *unchanged* after one `GC.run` is a strong hint, but it can still be a false positive: anything held by a **periodic-refresh mechanism** (a scheduled cache warmer, a filesystem/config watcher that re-snapshots on an interval, a metrics sampler) legitimately keeps its *current* generation strongly reachable, so a GC firing mid-cycle can't reclaim it — it looks exactly like a leak for that one sample. The tell is the trend, not the single GC: a real leak's count only ever climbs and **never returns to baseline**, whereas a cyclic holder produces a sawtooth. Before concluding, take several spaced samples (as in step 1) and confirm the count does *not* fall back:
+
+```bash
+for i in 1 2 3 4 5; do
+  jcmd <pid> GC.class_histogram | awk '/<SuspectClass>$/{print $2}'
+done
+```
+
+A monotonic climb across all samples that also survives the forced GC → confirmed leak. A rise-then-fall back toward the starting value (e.g. `166 → 332 → 415 → 249 → 166`) → bounded cyclic churn, not a leak, even though any two rising samples plus one GC check would have "confirmed" it. This is the same "one-directional, not oscillating" test from step 1 — the forced GC does not replace it, it complements it; a cheap secondary clue is that a cyclic holder's *owner* count stays fixed (e.g. a constant handful of watcher/snapshot-root objects) while only the held class fluctuates.
 
 ## 3. Check whether it's the only leaking resource
 
