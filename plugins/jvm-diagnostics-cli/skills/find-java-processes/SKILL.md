@@ -1,6 +1,6 @@
 ---
 name: find-java-processes
-description: List running Java processes on the local machine (JVM PID, main class, and full JVM args). Use when the user asks what Java/JVM processes are running, wants to find the PID of the PetClinic app, JMC, or another JVM, or needs JVM args (e.g. debug/JMX/Jolokia ports) for an already-running process.
+description: List running Java processes on the local machine (JVM PID, main class, and full JVM args). Use when the user asks what Java/JVM processes are running, wants to find the PID of the Java app, JMC, or another JVM, or needs JVM args (e.g. debug/JMX/Jolokia ports) for an already-running process.
 ---
 
 # Find Java processes
@@ -12,7 +12,7 @@ jps -lv
 ```
 
 - `-l` prints the fully-qualified main class (or jar path) instead of just the short name.
-- `-v` prints the JVM arguments passed to each process (heap flags, javaagents, debug/JMX ports, etc.) — this is what lets you spot things like the JDWP debug socket, the Jolokia agent, or the JMX remote port on the PetClinic process.
+- `-v` prints the JVM arguments passed to each process (heap flags, javaagents, debug/JMX ports, etc.) — this is what lets you spot things like the JDWP debug socket, the Jolokia agent, or the JMX remote port on the Java process.
 
 Fallback if `jps` isn't on `PATH` (e.g. non-JDK environments):
 
