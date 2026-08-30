@@ -32,17 +32,20 @@ Recording for 60-120s under real traffic is usually enough to get a meaningful m
 
 ## 3. Wait for it to finish, then confirm the file landed
 
-A fixed-duration recording finishes on its own — don't manually stop it early unless you need the data sooner. To wait without polling manually, use a loop that checks for the dump:
+A fixed-duration recording finishes and auto-dumps on its own — don't manually stop it early unless you need the data sooner. **Do not** wait on the file merely *existing*: `JFR.start` creates the `filename` target immediately at 0 bytes and only fills/finalizes it once the duration elapses, so `until [ -f <file> ]` returns instantly and you'll analyze an empty/truncated recording.
+
+Instead, sleep roughly the recording duration, then poll `JFR.check` until the recording is no longer running (the real "finished and dumped" signal):
 
 ```bash
-until [ -f /tmp/<app>-<pid>-<label>.jfr ]; do sleep 5; done
+sleep <N>                                              # ~ the duration= value you used
+until ! jcmd <pid> JFR.check | grep -q running; do sleep 2; done
 ```
 
 Then confirm:
 
 ```bash
-jcmd <pid> JFR.check        # should report "no recordings" once auto-dumped, or show it as stopped
-ls -la /tmp/<app>-<pid>-<label>.jfr
+jcmd <pid> JFR.check                  # should report "no recordings" once auto-dumped, or show it as stopped
+ls -la /tmp/<app>-<pid>-<label>.jfr   # sanity-check it's non-zero and has stopped growing
 ```
 
 ## 4. Analyze the recording
